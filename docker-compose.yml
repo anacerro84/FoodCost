@@ -1,0 +1,36 @@
+# Levanta todo el sistema: base de datos, API y frontend.
+#   docker compose up --build
+# Luego (opcional) cargar datos de ejemplo:
+#   docker compose exec api python -m app.seed
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: foodcost
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/foodcost
+      CORS_ORIGINS: http://localhost:5173
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build: ./frontend
+    environment:
+      API_URL: http://api:8000
+    ports: ["5173:5173"]
+    depends_on: [api]
+
+volumes:
+  pgdata:
